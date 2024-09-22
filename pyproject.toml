@@ -1,0 +1,23 @@
+# See https://packaging.python.org/en/latest/tutorials/packaging-projects/
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "data_science_packages"
+version = "0.0.1"
+authors = [
+  { name="Brett Allen", email="brettallen777@gmail.com" },
+]
+description = "Python packages for data science intended to contain multi-purpose functions to streamline EDA work and model training."
+readme = "README.md"
+requires-python = ">=3.12.5"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/BrettFX/data-science-packages"
+Issues = "https://github.com/BrettFX/data-science-packages/issues"
