@@ -24,6 +24,25 @@ def print_null_values_report(df: pd.DataFrame):
     # Display the result
     print(missing_info)
 
+def get_missing_values(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Create a dataframe to represent the missing values in the original dataframe.
+
+    Args:
+        df (pd.DataFrame): Original dataframe to identify missing values.
+
+    Returns:
+        pd.DataFrame: New dataframe representing a report of missing values in original dataframe.
+    """
+    total_missing = df.isna().sum()
+    total_available = len(df) - total_missing
+    percent_missing = (total_missing / len(df))*100
+    return pd.DataFrame({
+        'total_missing': total_missing,
+        'total_available': total_available,
+        'percent_missing': percent_missing.map(lambda p: f'{p:.1f}%')
+    })
+
 def build_lookup(data: pd.DataFrame, key: str) -> dict:
     """
     Build encoded lookup map for target column in dataframe.
@@ -127,3 +146,73 @@ def generate_pieplot(data: pd.DataFrame, y: str, **kwargs):
     plt.title(kwargs.get('title', 'Pie Plot'))
     plt.show()
 
+def plot_corr_matrix(data: pd.DataFrame):
+    """
+    Generate and plot a correlation matrix for the numeric columns in the provided dataset.
+
+    Args:
+        data (pd.DataFrame): Dataset to create correlation plot for.
+    """
+    corr_matrix = data.select_dtypes('number').corr()
+    plt.figure(figsize=(16, 10))
+    sns.heatmap(corr_matrix, annot=True, vmin=-1, vmax=1, cmap='coolwarm', square=True)
+    plt.show()
+
+def generate_boxplots(data: pd.DataFrame, ncols: int=4, figsize: tuple=(20, 15), **kwargs):
+    """
+    Generate box plot for dataset to determine outliers.
+
+    Args:
+        data (pd.DataFrame): Dataset to generate box plot for.
+        ncols (int, optional): Number of column in the produced figure. Defaults to 4.
+        figsize (tuple, optional): Size of the figure. Defaults to (20, 15).
+    """
+    if data is None or data.empty:
+        return
+    
+    # Dynamically determine number of columns and rows for subplots
+    ncols = min(ncols, len(data.columns))
+    nrows = (len(data.columns) + ncols - 1) // ncols
+
+    # Create subplots
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
+
+    # Flatten 2D axes array to 1D
+    if max(nrows, ncols) > 1:
+        axes = axes.ravel()
+    else:
+        axes = np.array([axes])
+
+    for i, col in enumerate(data.columns):
+        sns.boxplot(data=data[col], ax=axes[i])
+        axes[i].set_title(col)
+        axes[i].set(xticklabels=[], xticks=[])
+
+    # Remove unused plots
+    for i in range(len(data.columns), nrows * ncols):
+        fig.delaxes(axes[i])
+    
+    if 'title' in kwargs:
+        fig.suptitle(kwargs.get('title'), weight='bold')
+        
+    plt.tight_layout()
+    plt.show()
+
+def generate_pairplot(data: pd.DataFrame, **kwargs):
+    """
+    Generate pair plot for all numeric columns in the provided dataset.
+    For enhanced visualization/eda, pass in "hue" keyword argument with
+    a categorical column (column with unique and finite set of values).
+
+    Args:
+        data (pd.DataFrame): Dataset to create pair plot for.
+    """
+    numeric_cols = list(data.select_dtypes('number'))
+    sns.pairplot(data[numeric_cols], **kwargs)
+
+    # Generate columns string (e.g., "a, b, c, and d")
+    cols_str = ', '.join(numeric_cols[:-1] + [f'and {numeric_cols[-1]}'])
+
+    plt.suptitle(f'Pairwise Plot Between {cols_str}')
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.show()
