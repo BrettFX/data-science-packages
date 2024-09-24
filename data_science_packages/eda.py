@@ -198,7 +198,7 @@ def generate_boxplots(data: pd.DataFrame, ncols: int=4, figsize: tuple=(20, 15),
     plt.tight_layout()
     plt.show()
 
-def generate_pairplot(data: pd.DataFrame, **kwargs):
+def generate_pairplot(data: pd.DataFrame, legend_loc: str='upper left', legend_ncol: int=1, **kwargs):
     """
     Generate pair plot for all numeric columns in the provided dataset.
     For enhanced visualization/eda, pass in "hue" keyword argument with
@@ -206,9 +206,26 @@ def generate_pairplot(data: pd.DataFrame, **kwargs):
 
     Args:
         data (pd.DataFrame): Dataset to create pair plot for.
+        legend_loc (str, optional): Location to render the legend if hue is provided (e.g., "upper left", "lower center", etc.). Honored if "hue" kwarg is provided. Default "upper left".
+        legend_ncol (int, optional): Number of columns in legend to control whether items in legend are displayed horizontally vs. vertically. Honored if "hue" kwarg is provided. Default 1.
     """
     numeric_cols = list(data.select_dtypes('number'))
-    sns.pairplot(data[numeric_cols], **kwargs)
+    g = sns.pairplot(data[numeric_cols], **kwargs)
+
+    # Place legend in different location as desired
+    # Inspired by https://stackoverflow.com/a/40910102
+    if kwargs.get('hue'):
+        handles = g._legend_data.values()
+        labels = g._legend_data.keys()
+        # g.figure.legend(
+        #     title=kwargs.get('hue'),
+        #     handles=handles, 
+        #     labels=labels, 
+        #     loc=legend_loc, 
+        #     ncol=legend_ncol
+        # )
+        sns.move_legend(g, legend_loc, labels=labels, ncol=legend_ncol, title=kwargs.get('hue'), frameon=False)
+        g.figure.subplots_adjust(top=0.92, bottom=0.08)
 
     # Generate columns string (e.g., "a, b, c, and d")
     cols_str = ', '.join(numeric_cols[:-1] + [f'and {numeric_cols[-1]}'])
