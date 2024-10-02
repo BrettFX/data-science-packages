@@ -11,7 +11,7 @@ authors = [
 ]
 description = "Python packages for data science intended to contain multi-purpose functions to streamline EDA work and model training."
 readme = "README.md"
-requires-python = ">=3.12.5"
+requires-python = ">=3.12.0"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
