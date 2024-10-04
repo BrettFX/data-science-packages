@@ -36,10 +36,12 @@ def get_missing_values(df: pd.DataFrame) -> pd.DataFrame:
     """
     total_missing = df.isna().sum()
     total_available = len(df) - total_missing
-    percent_missing = (total_missing / len(df))*100
+    ratio_missing = total_missing / len(df)
+    percent_missing = ratio_missing*100
     return pd.DataFrame({
         'total_missing': total_missing,
         'total_available': total_available,
+        'ratio_missing': ratio_missing,
         'percent_missing': percent_missing.map(lambda p: f'{p:.1f}%')
     })
 
