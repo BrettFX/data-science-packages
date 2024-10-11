@@ -14,6 +14,8 @@ import pyLDAvis
 import pyLDAvis.gensim
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
+import nltk
+from nltk.corpus import stopwords
 from typing import Union, List
 
 # Load spacy model
@@ -27,6 +29,8 @@ try:
 except OSError:
   download(model=spacy_model)
   nlp = spacy.load(spacy_model, disable=['parser', 'ner'])
+
+nltk.download('stopwords')
 
 def sent_to_words(sentences: list):
   for sentence in sentences:
@@ -126,4 +130,68 @@ def create_wordcloud(data: Union[str, List, pd.Series], max_font_size: int=40, i
     plt.axis("off")
     plt.show()
 
-# TODO Add functions for topic modeling (building LDA model and visualization)
+def group_topics_lda(data: Union[List[str], pd.Series], stopwords: list=stopwords.words('english'), num_topics: int=-1, random_state: int=42) -> dict:
+    if isinstance(data, pd.Series):
+        data = data.values.tolist()
+
+    # Remove new line characters 
+    data = [re.sub(r'\n', ' ', sent) for sent in data]
+
+    # Remove distracting single quotes 
+    data = [re.sub(r"'", "", sent) for sent in data]
+
+    # Tokenize words
+    data_words = list(sent_to_words(data))
+
+    # Build the bigram and trigram models
+    bigram = gensim.models.Phrases(data_words, min_count=5, threshold=100) # higher threshold fewer phrases.
+    trigram = gensim.models.Phrases(bigram[data_words], threshold=100)
+
+    # Faster way to get a sentence clubbed as a trigram/bigram
+    bigram_mod = gensim.models.phrases.Phraser(bigram)
+    trigram_mod = gensim.models.phrases.Phraser(trigram)
+
+    # Remove Stop Words
+    data_words_nostops = remove_stopwords(texts=data_words, stop_words=stopwords)
+
+    # Form Bigrams
+    data_words_bigrams = make_bigrams(texts=data_words_nostops, bigram_model=bigram_mod)
+
+    # Do lemmatization keeping only noun, adj, vb, adv
+    data_lemmatized = lemmatization(
+        texts=data_words_bigrams, 
+        allowed_postags=['NOUN', 'ADJ', 'VERB', 'ADV']
+    )
+
+    # Create Dictionary 
+    id2word = corpora.Dictionary(data_lemmatized)  
+
+    # Create Corpus 
+    texts = data_lemmatized  
+
+    # Term Document Frequency 
+    corpus = [id2word.doc2bow(text) for text in texts]
+
+    # Build LDA model
+    # NOTE: Using 7 topics to represent the number of possible reporter types
+    lda_model = gensim.models.ldamodel.LdaModel(
+        corpus=corpus,
+        id2word=id2word,
+        num_topics=num_topics if num_topics > 0 else len(data) // 2,
+        random_state=random_state,
+        update_every=1,
+        chunksize=100,
+        passes=10,
+        alpha='auto',
+        per_word_topics=True
+    )
+
+    return dict(
+       lda_model=lda_model,
+       corpus=corpus,
+       id2word=id2word,
+    )
+
+def visualize_topics_lda(lda_model: gensim.models.ldamodel.LdaModel, corpus: List[List[tuple]], id2word: corpora.Dictionary):
+   vis = pyLDAvis.gensim.prepare(lda_model, corpus, id2word)
+   return vis
