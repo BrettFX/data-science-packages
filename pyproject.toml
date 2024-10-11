@@ -17,6 +17,13 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[tool.setuptools.packages.find]
+where = ["data_science_packages"]
 
 [project.urls]
 Homepage = "https://github.com/BrettFX/data-science-packages"
