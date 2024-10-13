@@ -154,6 +154,39 @@ def classify_columns(df: pd.DataFrame) -> Tuple[dict, dict]:
     
     return column_types, grouped_column_types
 
+def get_first_valid_values(df: pd.DataFrame) -> dict:
+    """
+    Get first valid value for each column in provided dataframe.
+
+    Args:
+        df (pd.DataFrame): Dataframe to find first valid value in each column.
+
+    Returns:
+        dict: Dictionary containing first valid values, list of valid columns, and a list of invalid columns.
+    """
+    # Get first non-null value for each column and track columns that didn't have a valid value
+    first_valid_values = {}
+    valid_cols = []
+    invalid_cols = []
+    for col in df.columns:
+        # Replace values that are all question marks (e.g., "???????????")
+        s = df[col].replace(r'^\?{1,}$', np.nan, regex=True).dropna()
+        idx = s.first_valid_index()
+        val = s.loc[idx] if idx is not None else None
+
+        if val is not None:
+            # print(f'{col}: {str(val)[:50]}')
+            first_valid_values[col] = val
+            valid_cols.append((col, val))
+        else:
+            invalid_cols.append(col)
+
+    return dict(
+        first_valid_values=first_valid_values,
+        valid_cols=valid_cols,
+        invalid_cols=invalid_cols,
+    )
+
 def generate_countplot(data: pd.DataFrame, y: str, **kwargs):
     """
     Generate countplot on data for given column (y). Example keyword args include 'title', 'base_color', 'figsize', 'limit', 'xlabel', and 'ylabel'
