@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from typing import Tuple
 
 def print_null_values_report(df: pd.DataFrame):
     """
@@ -92,6 +93,66 @@ def get_outliers(df: pd.DataFrame, col: str) -> pd.DataFrame:
 
     # Return the outliers dataframe by using lower bound and upper bound filters
     return df[(df[col] < lower_bound) | (df[col] > upper_bound)]
+
+def classify_columns(df: pd.DataFrame) -> Tuple[dict, dict]:
+    """
+    Classify columns in dataframe by their type. Possible column classifications are:
+    1) text
+    2) numeric
+    3) date
+    4) boolean
+    5) categorical
+
+    Args:
+        df (pd.DataFrame): Dataset to classify column types for.
+
+    Returns:
+        Tuple[dict, dict]: Tuple containing two dictionaries, 
+                           1) Column classifications as key-value pairs, where keys are the original column names and values are the respective column classifications.
+                           2) Columns grouped by classification type where keys are the classification and values are a list of all columns that are grouped by that classification type.
+    """
+    column_types = {}
+    
+    for col in df.columns:
+        # Convert data to string first
+        data = df[col].astype(str)
+
+        # Assume initially all columns are textual/narrative
+        col_type = "text"
+        try:
+            # Check if column can be converted to numeric
+            pd.to_numeric(data, errors='raise')
+            col_type = "numeric"
+        except ValueError:
+            pass
+        
+        # Check for date-like data
+        try:
+            pd.to_datetime(data, errors='raise')
+            col_type = "date"
+        except (ValueError, TypeError):
+            pass
+        
+        # Check for boolean data
+        if data.dropna().isin([0, 1, True, False]).all():
+            col_type = "boolean"
+        
+        # Check for categorical data (few unique values)
+        if col_type == "text" and data.nunique() / len(data) < 0.1:
+            col_type = "categorical"
+        
+        column_types[col] = col_type
+
+    # Create grouped dataframe as alternative view
+    df = pd.DataFrame({ "Feature": [ *list(column_types.keys()) ], "Type": [ *list(column_types.values()) ] })
+    grouped_column_types = {}
+    for name, group in df.groupby(['Type']):
+        t = name[0]
+        grouped_column_types[t] = []
+        for idx, row in group.reset_index().iterrows():
+            grouped_column_types[t].append(row['Feature'])
+    
+    return column_types, grouped_column_types
 
 def generate_countplot(data: pd.DataFrame, y: str, **kwargs):
     """
