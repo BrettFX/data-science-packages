@@ -192,6 +192,21 @@ def group_topics_lda(data: Union[List[str], pd.Series], stopwords: list=stopword
        id2word=id2word,
     )
 
+def get_topic_lda(text: str, model: gensim.models.ldamodel.LdaModel, stop_words: list=stopwords.words('english')):
+    if not text:
+        return None, None
+
+    if not stop_words:
+        stop_words = stopwords.words("english")
+
+    _, corpus = preprocess_data(data=[text], stop_words=stop_words)
+
+    # Inference LDA model wiht sample narrative
+    pred = model[corpus[0]]
+
+    # Get most likely topic where i=0 represents the topic and i=1 represents the probability of match on the respective topic
+    return max(pred[0], key=lambda x:x[1])
+
 def visualize_topics_lda(lda_model: gensim.models.ldamodel.LdaModel, corpus: List[List[tuple]], id2word: corpora.Dictionary):
    vis = pyLDAvis.gensim.prepare(lda_model, corpus, id2word)
    return vis
