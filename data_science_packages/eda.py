@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from dateutil import parser as date_parser
 from typing import Tuple
 
 def print_null_values_report(df: pd.DataFrame):
@@ -116,6 +117,7 @@ def classify_columns(df: pd.DataFrame) -> Tuple[dict, dict]:
     for col in df.columns:
         # Convert data to string first
         data = df[col].astype(str)
+        type_found = False
 
         # Assume initially all columns are textual/narrative
         col_type = "text"
@@ -123,23 +125,34 @@ def classify_columns(df: pd.DataFrame) -> Tuple[dict, dict]:
             # Check if column can be converted to numeric
             pd.to_numeric(data, errors='raise')
             col_type = "numeric"
+            type_found = True
         except ValueError:
             pass
         
         # Check for date-like data
-        try:
-            pd.to_datetime(data, errors='raise')
-            col_type = "date"
-        except (ValueError, TypeError):
-            pass
+        if not type_found:
+            try:
+                pd.to_datetime(data, errors='raise')
+                col_type = "date"
+                type_found = True
+            except (ValueError, TypeError):
+                # Use dateutil parser for edge cases such as 'June 27, 2017'
+                try:
+                    data.apply(lambda x: date_parser.parse(x))
+                    # print(f'"{col}" turned out to be a date after using dateutil parser')
+                    col_type = "date"
+                    type_found = True
+                except (date_parser.ParserError, ValueError, TypeError) as e:
+                    pass
         
-        # Check for boolean data
-        if data.dropna().isin([0, 1, True, False]).all():
-            col_type = "boolean"
-        
-        # Check for categorical data (few unique values)
-        if col_type == "text" and data.nunique() / len(data) < 0.1:
-            col_type = "categorical"
+        if not type_found:
+            # Check for boolean data
+            if data.dropna().isin([0, 1, True, False]).all():
+                col_type = "boolean"
+            
+            # Check for categorical data (few unique values)
+            if col_type == "text" and data.nunique() / len(data) < 0.1:
+                col_type = "categorical"
         
         column_types[col] = col_type
 
