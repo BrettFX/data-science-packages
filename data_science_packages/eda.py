@@ -47,6 +47,29 @@ def get_missing_values(df: pd.DataFrame) -> pd.DataFrame:
         'percent_missing': percent_missing.map(lambda p: f'{p:.1f}%')
     })
 
+def get_unique_values(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Create a dataframe to represent the unique values in the original dataframe.
+
+    Args:
+        df (pd.DataFrame): Original dataframe to identify unique values.
+
+    Returns:
+        pd.DataFrame: New dataframe representing a report of unique values in original dataframe.
+    """
+    total_unique = df[~df.isna()].nunique()
+    total_missing = df.isna().sum()
+    total_available = len(df) - total_missing
+    ratio_unique = total_unique / len(df)
+    percent_unique = ratio_unique*100
+    return pd.DataFrame({
+        'total_unique': total_unique,
+        'non_null': total_available,
+        'total_records': total_missing + (len(df)-total_missing),
+        'ratio_unique': ratio_unique,
+        'percent_unique': percent_unique.map(lambda p: f'{p:.1f}%')
+    })
+
 def build_lookup(data: pd.DataFrame, key: str) -> dict:
     """
     Build encoded lookup map for target column in dataframe.
