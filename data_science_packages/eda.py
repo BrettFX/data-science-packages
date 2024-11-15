@@ -7,6 +7,25 @@ import seaborn as sns
 from dateutil import parser as date_parser
 from typing import Tuple
 
+def get_first_valid_row(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Assemble a valid row contructed by the first valid value for each column in the dataset.
+
+    Args:
+        df (pd.DataFrame): Dataset to obtain first valid row for.
+
+    Returns:
+        pd.DataFrame: Single row dataset with all possible valid values.
+    """
+    vals = {}
+    for col in df.columns:
+        idx = df[col].first_valid_index()
+        val = None
+        if idx is not None:
+            val = df[col].iloc[idx]
+        vals[col] = [val]
+    return pd.DataFrame(vals)
+
 def print_null_values_report(df: pd.DataFrame):
     """
     Generate and print null values report for provided dataframe. Displays the count of null records
