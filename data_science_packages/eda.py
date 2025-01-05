@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from dateutil import parser as date_parser
+from sklearn.utils import resample
 from typing import Tuple
 
 def get_first_valid_row(df: pd.DataFrame) -> pd.DataFrame:
@@ -384,3 +385,40 @@ def generate_pairplot(data: pd.DataFrame, legend_loc: str='upper left', legend_n
     plt.suptitle(f'Pairwise Plot Between {cols_str}')
     plt.tight_layout(rect=[0, 0, 1, 0.95])
     plt.show()
+
+def apply_resampling(df: pd.DataFrame, col: str, do_upsample=True) -> pd.DataFrame:
+    """
+    Resample to balance the classes in the specified column.
+
+    Parameters:
+        df (pd.DataFrame): Input pandas DataFrame.
+        col (str): Column name to balance.
+        do_upsample (bool): If True, upsample the minority classes. Otherwise, downsample the majority classes.
+
+    Returns:
+        pd.DataFrame: Resampled pandas DataFrame.
+    """
+    # Compute value counts (requires explicit computation in pandas)
+    value_counts = df[col].value_counts()
+    sample_size = value_counts.max() if do_upsample else value_counts.min()
+    print('sample_size = {} ({})'.format(sample_size, 'Upsampling' if do_upsample else 'Downsampling'))
+
+    # Create a new pandas DataFrame to store resampled data
+    resampled_dfs = []
+
+    for label, count in value_counts.items():
+        data = df[df[col] == label]
+        n = count
+
+        # Determine if resampling is needed
+        if (do_upsample and n < sample_size) or (not do_upsample and n > sample_size):
+            # Resample the data (convert to pandas temporarily for resampling)
+            resampled_label = resample(data, replace=do_upsample, n_samples=sample_size, random_state=42)
+            resampled_dfs.append(resampled_label)
+        else:
+            resampled_dfs.append(data)
+
+    # Concatenate all the resampled data
+    resampled_data = pd.concat(resampled_dfs)
+
+    return resampled_data
