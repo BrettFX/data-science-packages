@@ -27,8 +27,19 @@ class ModelTracker(dict):
     def get_models(self) -> List[Any]:
         return list(self.values())
 
-    def save(self, model_dir: str):
+    def save(self, name: str, model_dir: str):
+        outpath = os.path.join(model_dir, f'{name}.pkl')
+        model = self[name]
+        
+        # Save the model
+        with open(outpath, 'wb') as f:
+            pickle.dump(model, f, protocol=5)
+    
+        print(f'Saved "{name}" to "{outpath}"')
+    
+    def save_all(self, model_dir: str):
         print('Saving Models:')
+        max_len = max([len(name) for name, model in self.values()])
         for idx, entry in enumerate(self.items()):
             name, model = entry
             outpath = os.path.join(model_dir, f'{name}.pkl')
@@ -37,11 +48,11 @@ class ModelTracker(dict):
             with open(outpath, 'wb') as f:
                 pickle.dump(model, f, protocol=5)
         
-            print(f'  {idx+1:>2}) {name:<45} | Saved to "{outpath}"')
+            print(f'  {idx+1:>2}) {name:<{max_len}} | Saved to "{outpath}"')
 
     def load(self, model_dir: str):
         for path in glob(os.path.join(model_dir, '*.pkl')):
-            print(path)
+            print(f'>>> {path}')
             name = os.path.splitext(os.path.basename(path))[0]
             with open(path, 'rb') as f:
                 model = pickle.load(f)
@@ -49,4 +60,4 @@ class ModelTracker(dict):
 
     def __repr__(self):
         return [(name, model) for name, model in self.items()]
-        
+    
