@@ -243,6 +243,48 @@ def get_first_valid_values(df: pd.DataFrame) -> dict:
         invalid_cols=invalid_cols,
     )
 
+def generate_histplots(data: pd.DataFrame, ncols: int=4, bins=20, title: str='Distribution per Feature', figsize: tuple=(20, 15), **kwargs):
+    """
+    Generate histogram plots for dataset to analyze distribution of the data.
+
+    Args:
+        data (pd.DataFrame): Dataset to generate histogram plots for.
+        ncols (int, optional): Number of column in the produced figure. Defaults to 4.
+        bins (int, optional): Number of bins for each histogram plot. Defaults to 20.
+        title (str, optional): Title of the figure. Defaults to 'Histogram Plots'.
+        figsize (tuple, optional): Size of the figure. Defaults to (20, 15).
+    """
+    if data is None or data.empty:
+        return
+    
+    # Dynamically determine number of columns and rows for subplots
+    ncols = min(ncols, len(data.columns))
+    nrows = (len(data.columns) + ncols - 1) // ncols
+
+    # Create subplots
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
+
+    # Flatten 2D axes array to 1D
+    if max(nrows, ncols) > 1:
+        axes = axes.ravel()
+    else:
+        axes = np.array([axes])
+
+    for i, col in enumerate(data.columns):
+        sns.histplot(data=data[col], ax=axes[i], bins=bins, **kwargs)
+        axes[i].set_title(col)
+        axes[i].set(xticklabels=[], xticks=[])
+
+    # Remove unused plots
+    for i in range(len(data.columns), nrows * ncols):
+        fig.delaxes(axes[i])
+    
+    if title:
+        fig.suptitle(title, weight='bold')
+        
+    plt.tight_layout()
+    plt.show()
+
 def generate_countplot(data: pd.DataFrame, y: str, **kwargs):
     """
     Generate countplot on data for given column (y). Example keyword args include 'title', 'base_color', 'figsize', 'limit', 'xlabel', and 'ylabel'
