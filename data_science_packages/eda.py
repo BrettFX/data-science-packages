@@ -210,38 +210,42 @@ def classify_columns(df: pd.DataFrame) -> Tuple[dict, dict]:
     
     return column_types, grouped_column_types
 
-def get_first_valid_values(df: pd.DataFrame) -> dict:
+def get_first_valid_values(df: pd.DataFrame, n: int = 1) -> dict:
     """
-    Get first valid value for each column in provided dataframe.
+    Get the first 'n' unique valid values for each column in the provided dataframe.
+    If there are not enough unique values, duplicate values to reach 'n'.
 
     Args:
-        df (pd.DataFrame): Dataframe to find first valid value in each column.
+        df (pd.DataFrame): DataFrame to find first unique valid values in each column.
+        n (int, optional): Number of unique valid values to obtain for each column. Defaults to 1.
 
     Returns:
-        dict: Dictionary containing first valid values, list of valid columns, and a list of invalid columns.
+        dict: Dictionary containing first unique valid values, list of valid columns, and a list of invalid columns.
     """
-    # Get first non-null value for each column and track columns that didn't have a valid value
-    first_valid_values = {}
+    first_unique_values = {}
     valid_cols = []
     invalid_cols = []
-    for col in df.columns:
-        # Replace values that are all question marks (e.g., "???????????")
-        s = df[col].replace(r'^\?{1,}$', np.nan, regex=True).dropna()
-        idx = s.first_valid_index()
-        val = s.loc[idx] if idx is not None else None
 
-        if val is not None:
-            # print(f'{col}: {str(val)[:50]}')
-            first_valid_values[col] = val
-            valid_cols.append((col, val))
+    for col in df.columns:
+        # Replace values that are all question marks or empty strings with NaN
+        s = df[col].replace(r'^\?{1,}$', None, regex=True).replace("", None).dropna()
+
+        # Get unique values in order of appearance
+        unique_values = pd.Series(s.unique())
+
+        if not unique_values.empty:
+            # Ensure at least 'n' values, duplicating if necessary
+            repeated_values = (unique_values.tolist() * (n // len(unique_values) + 1))[:n]
+            first_unique_values[col] = repeated_values
+            valid_cols.append((col, repeated_values))
         else:
             invalid_cols.append(col)
 
-    return dict(
-        first_valid_values=first_valid_values,
-        valid_cols=valid_cols,
-        invalid_cols=invalid_cols,
-    )
+    return {
+        "first_unique_values": first_unique_values,
+        "valid_cols": valid_cols,
+        "invalid_cols": invalid_cols,
+    }
 
 def generate_histplots(data: pd.DataFrame, ncols: int=4, bins=20, title: str='Distribution per Feature', figsize: tuple=(20, 15), **kwargs):
     """
