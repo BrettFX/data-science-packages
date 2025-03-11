@@ -46,13 +46,14 @@ def print_null_values_report(df: pd.DataFrame):
     # Display the result
     print(missing_info)
 
-def get_missing_values(df: pd.DataFrame, threshold: float=None) -> pd.DataFrame:
+def get_missing_values(df: pd.DataFrame, above: float=None, below: float=None) -> pd.DataFrame:
     """
     Create a dataframe to represent the missing values in the original dataframe.
 
     Args:
         df (pd.DataFrame): Original dataframe to identify missing values.
-        threshold (float, optional): Filter missing values report by removing entries below the specified numeric threshold. Default None.
+        above (float, optional): Include only fields with missing values above a specified threshold. Defaults to None.
+        below (float, optional): Include only fields with missing values below a specified threshold. Defaults to None.
 
     Returns:
         pd.DataFrame: New dataframe representing a report of missing values in original dataframe.
@@ -69,18 +70,24 @@ def get_missing_values(df: pd.DataFrame, threshold: float=None) -> pd.DataFrame:
         'percent_missing': percent_missing.map(lambda p: f'{p:.1f}%')
     })
 
-    if threshold is not None:
-        report = report[report['ratio_missing'] < threshold]
+    # Handle threshold filters if desired
+    if above is not None and below is not None:
+        report = report[(report['ratio_missing'] > above) & (report['ratio_missing'] < below)]
+    elif above is not None:
+        report = report[report['ratio_missing'] > above]
+    elif below is not None:
+        report = report[report['ratio_missing'] < below]
 
     return report
 
-def get_unique_values(df: pd.DataFrame, threshold: float=None) -> pd.DataFrame:
+def get_unique_values(df: pd.DataFrame, above: float=None, below: float=None) -> pd.DataFrame:
     """
     Create a dataframe to represent the unique values in the original dataframe.
 
     Args:
         df (pd.DataFrame): Original dataframe to identify unique values.
-        threshold (float, optional): Filter uniqueness report by removing entries below the specified numeric threshold. Default None.
+        above (float, optional): Include only fields with unique values above a specified threshold. Defaults to None.
+        below (float, optional): Include only fields with unique values below a specified threshold. Defaults to None.
 
     Returns:
         pd.DataFrame: New dataframe representing a report of unique values in original dataframe.
@@ -99,8 +106,13 @@ def get_unique_values(df: pd.DataFrame, threshold: float=None) -> pd.DataFrame:
         'percent_unique': percent_unique.map(lambda p: f'{p:.1f}%')
     })
 
-    if threshold is not None:
-        report = report[report['ratio_unique'] < threshold]
+    # Handle threshold filters if desired
+    if above is not None and below is not None:
+        report = report[(report['ratio_unique'] > above) & (report['ratio_unique'] < below)]
+    elif above is not None:
+        report = report[report['ratio_unique'] > above]
+    elif below is not None:
+        report = report[report['ratio_unique'] < below]
 
     return report
 
