@@ -46,12 +46,13 @@ def print_null_values_report(df: pd.DataFrame):
     # Display the result
     print(missing_info)
 
-def get_missing_values(df: pd.DataFrame) -> pd.DataFrame:
+def get_missing_values(df: pd.DataFrame, threshold: float=None) -> pd.DataFrame:
     """
     Create a dataframe to represent the missing values in the original dataframe.
 
     Args:
         df (pd.DataFrame): Original dataframe to identify missing values.
+        threshold (float, optional): Filter missing values report by removing entries below the specified numeric threshold. Default None.
 
     Returns:
         pd.DataFrame: New dataframe representing a report of missing values in original dataframe.
@@ -60,19 +61,26 @@ def get_missing_values(df: pd.DataFrame) -> pd.DataFrame:
     total_available = len(df) - total_missing
     ratio_missing = total_missing / len(df)
     percent_missing = ratio_missing*100
-    return pd.DataFrame({
+
+    report = pd.DataFrame({
         'total_missing': total_missing,
         'total_available': total_available,
         'ratio_missing': ratio_missing,
         'percent_missing': percent_missing.map(lambda p: f'{p:.1f}%')
     })
 
-def get_unique_values(df: pd.DataFrame) -> pd.DataFrame:
+    if threshold is not None:
+        report = report[report['ratio_missing'] < threshold]
+
+    return report
+
+def get_unique_values(df: pd.DataFrame, threshold: float=None) -> pd.DataFrame:
     """
     Create a dataframe to represent the unique values in the original dataframe.
 
     Args:
         df (pd.DataFrame): Original dataframe to identify unique values.
+        threshold (float, optional): Filter uniqueness report by removing entries below the specified numeric threshold. Default None.
 
     Returns:
         pd.DataFrame: New dataframe representing a report of unique values in original dataframe.
@@ -82,13 +90,19 @@ def get_unique_values(df: pd.DataFrame) -> pd.DataFrame:
     total_available = len(df) - total_missing
     ratio_unique = total_unique / len(df)
     percent_unique = ratio_unique*100
-    return pd.DataFrame({
+
+    report = pd.DataFrame({
         'total_unique': total_unique,
         'non_null': total_available,
         'total_records': total_missing + (len(df)-total_missing),
         'ratio_unique': ratio_unique,
         'percent_unique': percent_unique.map(lambda p: f'{p:.1f}%')
     })
+
+    if threshold is not None:
+        report = report[report['ratio_unique'] < threshold]
+
+    return report
 
 def build_lookup(data: pd.DataFrame, key: str) -> dict:
     """
