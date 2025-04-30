@@ -1,4 +1,4 @@
-__author__ = "Brett Allen (brettallen777@gmail.com"
+__author__ = "Brett Allen (brettallen777@gmail.com)"
 
 import pandas as pd
 import numpy as np
@@ -6,7 +6,13 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from dateutil import parser as date_parser
 from sklearn.utils import resample
-from typing import Tuple
+import holoviews as hv
+from holoviews import opts, dim
+import plotly.graph_objects as go
+from collections import defaultdict
+from typing import Tuple, List
+
+hv.extension('bokeh')
 
 def get_first_valid_row(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -494,3 +500,116 @@ def apply_resampling(df: pd.DataFrame, col: str, do_upsample=True) -> pd.DataFra
     resampled_data = pd.concat(resampled_dfs)
 
     return resampled_data
+
+def create_plotly_sankey(df: pd.DataFrame, cols: List[str], value_col: str=None, opacity: float=0.4):
+    """
+    Create a Sankey diagram from a DataFrame using specified columns as stages.
+
+    Parameters:
+        df (pd.DataFrame): The source DataFrame.
+        cols (List[str]): List of columns in order to represent the flow.
+        value_col (str, optional): If specified, use this column as flow value; otherwise, counts are used.
+        opacity (float): Opacity for link colors.
+    """
+    # Create label index and track links
+    labels = []
+    label_to_index = {}
+    links = defaultdict(int)
+
+    # Assign unique indices to each label
+    for col in cols:
+        for label in df[col].dropna().unique():
+            if label not in label_to_index:
+                label_to_index[label] = len(labels)
+                labels.append(label)
+
+    # Build links between consecutive stages
+    for i in range(len(cols) - 1):
+        source_col = cols[i]
+        target_col = cols[i + 1]
+
+        for _, row in df[[source_col, target_col] + ([value_col] if value_col else [])].dropna().iterrows():
+            source = row[source_col]
+            target = row[target_col]
+            value = row[value_col] if value_col else 1
+            links[(label_to_index[source], label_to_index[target])] += value
+
+    # Format for Sankey
+    sankey_links = {
+        "source": [],
+        "target": [],
+        "value": [],
+        "label": [],
+        "color": []
+    }
+
+    node_colors = ['rgba(31, 119, 180, 0.8)'] * len(labels)
+
+    for (src_idx, tgt_idx), val in links.items():
+        sankey_links["source"].append(src_idx)
+        sankey_links["target"].append(tgt_idx)
+        sankey_links["value"].append(val)
+        sankey_links["label"].append(f"{labels[src_idx]} → {labels[tgt_idx]}")
+        sankey_links["color"].append(node_colors[src_idx].replace("0.8", str(opacity)))
+
+    # Plot with Plotly
+    fig = go.Figure(data=[go.Sankey(
+        node=dict(
+            pad=15,
+            thickness=15,
+            line=dict(color="black", width=0.5),
+            label=labels,
+            color=node_colors
+        ),
+        link=sankey_links
+    )])
+
+    fig.update_layout(title_text="Sankey Diagram", font_size=10)
+    fig.show()
+
+def create_holoviews_sankey(df: pd.DataFrame, columns: List[str], value_name: str="Count") -> hv.Sankey:
+    """
+    Create a Holoviews Sankey diagram from a DataFrame using specified columns.
+    
+    Parameters:
+        df (pd.DataFrame): Source DataFrame.
+        columns (List[str]): List of columns in order to represent the flow.
+        value_name (str, optional): name for the value column in the Sankey diagram (default is "Count")
+    
+    Returns:
+        hv.Sankey: A Holoviews Sankey diagram.
+    """
+    
+    # Step 1: Build edges from column transitions
+    edge_list = []
+    for i in range(len(columns) - 1):
+        src_col = columns[i]
+        tgt_col = columns[i + 1]
+        
+        # Count occurrences of each (source, target) pair
+        grouped = df.groupby([src_col, tgt_col]).size().reset_index(name=value_name)
+        grouped.columns = ['From', 'To', value_name]
+        edge_list.append(grouped)
+
+    edges_df = pd.concat(edge_list, ignore_index=True)
+
+    # Step 2: Create unique nodes
+    all_labels = pd.concat([edges_df['From'], edges_df['To']]).unique()
+    label_to_index = {label: idx for idx, label in enumerate(all_labels)}
+    
+    # Step 3: Map node labels to indices in edges
+    edges_df['From'] = edges_df['From'].map(label_to_index)
+    edges_df['To'] = edges_df['To'].map(label_to_index)
+
+    # Step 4: Create node dataset
+    nodes_df = pd.DataFrame({'index': list(label_to_index.values()),
+                             'label': list(label_to_index.keys())})
+    nodes = hv.Dataset(nodes_df, 'index', 'label')
+
+    # Step 5: Sankey creation
+    sankey = hv.Sankey((edges_df, nodes), ['From', 'To'], vdims=value_name)
+    sankey = sankey.opts(
+        opts.Sankey(labels='label', label_position='right', width=900, height=400, 
+                    cmap='Category20', edge_color=dim('To').str(), node_color=dim('index').str())
+    )
+    return sankey
