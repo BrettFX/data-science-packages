@@ -567,14 +567,17 @@ def create_plotly_sankey(df: pd.DataFrame, cols: List[str], value_col: str=None,
     fig.update_layout(title_text="Sankey Diagram", font_size=10)
     fig.show()
 
-def create_holoviews_sankey(df: pd.DataFrame, columns: List[str], value_name: str="Count") -> hv.Sankey:
+def create_holoviews_sankey(df: pd.DataFrame, columns: List[str], value_name: str="Count", title: str=None, width: int=900, height: int=400) -> hv.Sankey:
     """
     Create a Holoviews Sankey diagram from a DataFrame using specified columns.
     
     Parameters:
         df (pd.DataFrame): Source DataFrame.
         columns (List[str]): List of columns in order to represent the flow.
-        value_name (str, optional): name for the value column in the Sankey diagram (default is "Count")
+        value_name (str, optional): Name for the value column in the Sankey diagram (default is "Count")
+        title (str, optional): Title for the Sankey diagram.
+        width (int, optional): Width of the Sankey diagram (default is 900).
+        height (int, optional): Height of the Sankey diagram (default is 400).
     
     Returns:
         hv.Sankey: A Holoviews Sankey diagram.
@@ -609,7 +612,15 @@ def create_holoviews_sankey(df: pd.DataFrame, columns: List[str], value_name: st
     # Step 5: Sankey creation
     sankey = hv.Sankey((edges_df, nodes), ['From', 'To'], vdims=value_name)
     sankey = sankey.opts(
-        opts.Sankey(labels='label', label_position='right', width=900, height=400, 
-                    cmap='Category20', edge_color=dim('To').str(), node_color=dim('index').str())
+        opts.Sankey(
+            title=title,
+            labels='label', 
+            label_position='right', 
+            width=width, 
+            height=height,
+            cmap='Category20', 
+            edge_color=dim('To').str(), 
+            node_color=dim('index').str()
+        )
     )
     return sankey
