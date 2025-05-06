@@ -10,6 +10,10 @@ import holoviews as hv
 from holoviews import opts, dim
 import plotly.graph_objects as go
 from collections import defaultdict
+import statsmodels
+from statsmodels.tsa.seasonal import seasonal_decompose, STL , MSTL
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from typing import Tuple, List
 
 hv.extension('bokeh')
@@ -624,3 +628,108 @@ def create_holoviews_sankey(df: pd.DataFrame, columns: List[str], value_name: st
         )
     )
     return sankey
+
+def decompose_time_series(
+    data: pd.DataFrame, 
+    dt_col: str='datetime', 
+    year: int=-1, 
+    use_stl: bool=False, 
+    use_mstl: bool=False
+) -> Tuple[pd.Series, statsmodels.tsa.seasonal.DecomposeResult]:
+    """
+    Decompose a time series into trend, seasonal, and residual components.
+
+    Args:
+        data (pd.DataFrame): Time series data.
+        dt_col (str, optional): Column name for the datetime column. Defaults to 'datetime'.
+        year (int, optional): Year to filter the data. Defaults to -1.
+        use_stl (bool, optional): Whether to use Seasonal-Trend Decomposition (STL) using Loess. Defaults to False.
+        use_mstl (bool, optional): Whether to use Multiple Seasonal-Trend Decomposition (MSTL) using Loess. Defaults to False.
+
+    Returns:
+        Tuple[pd.Series, statsmodels.tsa.seasonal.DecomposeResult]: Tuple containing the time series counts and the decomposition result.
+    """
+    # Create snapshot of the data to prevent changes to the original dataset
+    time_data = None
+    if year > 0:
+        time_data = data[data[dt_col].dt.year == year].copy(deep=True)
+    else:
+        time_data = data.copy(deep=True)
+
+    time_data.set_index(dt_col, inplace=True)
+
+    # Resample the data to get the counts per day
+    counts = time_data.resample('D').size()
+
+    # Perform seasonal decomposition
+    decomposition = None
+    if use_stl:
+        decomposition = STL(counts).fit()
+    elif use_mstl:
+        decomposition = MSTL(counts).fit()
+    else:
+        decomposition = seasonal_decompose(counts, model='additive')
+
+    return counts, decomposition
+
+def plot_seasonality_decomposition(counts: pd.Series, decomposition: statsmodels.tsa.seasonal.DecomposeResult, label: str='Counts'):
+    """
+    Plot the decomposed components from the seasonal decomposition.
+
+    Args:
+        counts (pd.Series): Time series of counts.
+        decomposition (statsmodels.tsa.seasonal.DecomposeResult): Decomposition result from seasonal_decompose.
+        label (str, optional): Label for the y-axis. Defaults to 'Counts'.
+    """
+    # Plot the decomposed components
+    fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(15, 8), sharex=True)
+
+    # Observed from original time series
+    counts.plot(ax=ax1, title='Observed (Original)', color='#666FE0')
+    ax1.set_ylabel(label)
+
+    # Trend component
+    decomposition.trend.plot(ax=ax2, title='Trend', color='#D07663')
+    ax2.set_ylabel(label)
+
+    # Seasonal component
+    decomposition.seasonal.plot(ax=ax3, title='Seasonality', color='#29C09F')
+    ax3.set_ylabel(label)
+
+    # Residual component
+    decomposition.resid.plot(ax=ax4, title='Residuals', color='#A36FE9')
+    ax4.set_ylabel(label)
+
+    plt.tight_layout()
+    plt.show()
+
+# Interactive seasonality plot with plotly
+def plot_interactive_seasonality_decomposition(result: statsmodels.tsa.seasonal.DecomposeResult):
+    """
+    Create an interactive plot of the decomposed components from a seasonal decomposition.
+    Source: https://medium.com/@roberto98russo/my-favorite-trend-seasonality-decomposition-algorithms-for-time-series-analysis-7fefabd717e5
+
+    Args:
+        result (statsmodels.tsa.seasonal.DecomposeResult): Decomposition result containing observed, trend, seasonal, and residual components.
+    
+    The function plots these components using Plotly, with each component in a separate subplot for easy comparison. 
+    """
+    df = pd.concat([result.observed, result.trend, result.seasonal, result.resid], axis=1)
+    df = df.rename(columns={0:'Original Data', 'season':'seasonal','observed':'Original Data'})
+    components = df.columns
+    rows = len(components)
+    fig = make_subplots(rows=rows, cols=1, shared_xaxes=True, subplot_titles = [i for i in components])
+
+    # Plot original data
+    for i, col in enumerate(components):
+        fig.add_trace(go.Scatter(x=df.index, y=df[col], mode='lines', name=col), row=i+1, col=1)
+
+    # Update layout
+    fig.update_layout(
+        title='Time Series Decomposition',
+        xaxis_title='Time',
+        height=1200,
+        width=1200
+    )
+
+    fig.show()
